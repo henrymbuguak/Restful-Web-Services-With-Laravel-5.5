@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Meeting;
+use App\User;
 use Illuminate\Http\Request;
 
 class RegistrationController extends Controller
@@ -42,7 +44,27 @@ class RegistrationController extends Controller
         $meeting_id = $request->input('meeting_id');
         $user_id = $request->input('user_id');
 
-        $meeting = [
+        $meeting = Meeting::findOrFail($meeting_id);
+        $user = User::findOrFail($user_id);
+
+
+        $message = [
+            'msg' => 'User is already registered for this meeting',
+            'user' => $user,
+            'meeting' => $meeting,
+            'unregister' => [
+                'href' => 'api/v1/meeting/registration/' . $meeting->id,
+                'method' => 'DELETE'
+            ]
+        ];
+
+        if ($meeting->users()->where('users.id', $user->id)->first()) {
+            return response()->json($message, 404);
+        };
+
+        $user->meetings()->attach($meeting);
+
+        /*$meeting = [
             'title' => 'Title',
             'description' => 'Description',
             'time' => 'Time',
@@ -50,18 +72,20 @@ class RegistrationController extends Controller
                 'href' => 'api/v1/meeting/1',
                 'method' => 'GET'
             ]
-        ];
+        ];*/
 
-        $user = [
+
+
+        /*$user = [
             'name' => 'Name'
-        ];
+        ]*/;
 
         $response = [
             'msg' => 'User registered for meeting',
             'meeting' => $meeting,
             'user' => $user,
             'unregister' =>[
-                'href' => 'api/v1/meeting/registration/1',
+                'href' => 'api/v1/meeting/registration/' . $meeting->id,
                 'method' => 'DELETE'
             ]
         ];
@@ -111,7 +135,10 @@ class RegistrationController extends Controller
      */
     public function destroy($id)
     {
-        $meeting = [
+        $meeting = Meeting::findOrFail($id);
+        $meeting->users()->detach();
+
+        /*$meeting = [
             'title' => 'Title',
             'description' => 'Description',
             'time' => 'Time',
@@ -123,12 +150,12 @@ class RegistrationController extends Controller
 
         $user = [
             'name' => 'Name',
-        ];
+        ];*/
 
         $response = [
             'msg' => 'User unregistered for meeting',
             'meeting' => $meeting,
-            'user' => $user,
+            'user' => 'henry',
             'register' => [
                 'href' => 'api/v1/meeting/registration',
                 'method' => 'POST',
