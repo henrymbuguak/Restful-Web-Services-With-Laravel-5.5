@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use JWTAuth;
 use App\Meeting;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -11,7 +12,9 @@ class MeetingController extends Controller
 
     public function __construct()
     {
-        //$this->middleware('name');
+        $this->middleware('jwt.auth', ['only' => [
+            'update', 'store', 'destroy'
+        ]]);
     }
 
     /**
@@ -59,14 +62,18 @@ class MeetingController extends Controller
         $this->validate($request, [
             'title' => 'required',
             'description' => 'required',
-            'time' => 'required|date_format:YmdHie',
-            'user_id' => 'required'
+            'time' => 'required|date_format:YmdHie'
         ]);
+
+
+        if (!$user = JWTAuth::parseToken()->authenticate()) {
+            return response()->json(['msg' => 'User not available'], 404);
+        }
 
         $title = $request->input('title');
         $description = $request->input('description');
         $time = $request->input('time');
-        $user_id = $request->input('user_id');
+        $user_id = $user->id;
 
         $meeting = new Meeting([
             'title' => $title,
@@ -153,13 +160,17 @@ class MeetingController extends Controller
         $this->validate($request, [
             'title' => 'required',
             'description' => 'required',
-            'time' => 'required | date_format:YmdHie',
-            'user_id' => 'required'
+            'time' => 'required | date_format:YmdHie'
         ]);
+
+        if (!$user = JWTAuth::parseToken()->authenticate()) {
+            return response()->json(['msg' => 'User not available'], 404);
+        }
+
         $title = $request->input('title');
         $description = $request->input('description');
         $time = $request->input('time');
-        $user_id = $request->input('user_id');
+        $user_id = $user->id;
         $meeting = [
             'title' => $title,
             'description' => $description,
@@ -200,6 +211,14 @@ class MeetingController extends Controller
     public function destroy($id)
     {
         $meeting = Meeting::findOrFail($id);
+        if (!$user = JWTAuth::parseToken()->authenticate()) {
+            return response()->json(['msg' => 'User not available'], 404);
+        }
+
+        if (!$meeting->users()->where('users.id', $user->id)->first()) {
+            return response()->json(['msg' => 'user not registered for meeting, update not successful'], 401);
+        };
+
         $users = $meeting->users;
         $meeting->users()->detach();
         if (!$meeting->delete()) {
